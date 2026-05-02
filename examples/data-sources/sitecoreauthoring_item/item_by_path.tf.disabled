@@ -1,0 +1,28 @@
+# Example: Get item by path with specific fields
+data "sitecoreauthoring_item" "by_path" {
+  path        = "/sitecore/content/"
+  required    = false
+}
+
+# Output item information
+output "item_by_path" {
+  value = {
+    item_id        = data.sitecoreauthoring_item.by_path.item.item_id
+    path           = data.sitecoreauthoring_item.by_path.item.path
+    name           = data.sitecoreauthoring_item.by_path.item.name
+    display_name   = data.sitecoreauthoring_item.by_path.item.display_name
+    template_id    = data.sitecoreauthoring_item.by_path.item.template_id
+    template_name  = data.sitecoreauthoring_item.by_path.item.template_name
+    children_count = length(data.sitecoreauthoring_item.by_path.item.children)
+  }
+}
+
+# Output children information
+output "item_by_path_children" {
+  value = [for child in data.sitecoreauthoring_item.by_path.item.children : {
+    item_id       = child.item_id
+    name          = child.name
+    display_name  = child.display_name
+    template_name = child.template_name
+  }]
+}

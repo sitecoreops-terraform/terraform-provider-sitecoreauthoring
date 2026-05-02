@@ -2,6 +2,38 @@
 
 - CONTRIBUTING.md
 
+## Testing Guidelines
+
+When writing tests, follow these patterns:
+
+1. **Individual Test Cases**: Each test case should have its own `t.Run()` function for better isolation and clearer test output.
+2. **Avoid Table-Driven Loops**: Instead of using `for _, tc := range testCases` loops, restructure tests to use individual `t.Run()` calls.
+3. **Clear Test Names**: Use descriptive names for each test case that clearly indicate what is being tested.
+
+### Example Pattern
+
+```go
+func TestFunctionName(t *testing.T) {
+    t.Run("Test case description", func(t *testing.T) {
+        // Test setup
+        input := "test"
+        expected := "result"
+        
+        // Execute
+        actual := functionUnderTest(input)
+        
+        // Verify
+        if actual != expected {
+            t.Errorf("Expected %s, got %s", expected, actual)
+        }
+    })
+    
+    t.Run("Another test case", func(t *testing.T) {
+        // Another test case
+    })
+}
+```
+
 ## Commands
 
 ### Linting
