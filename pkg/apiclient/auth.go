@@ -134,16 +134,6 @@ func (c *Client) EnsureTokenValid() error {
 	return nil
 }
 
-func findCLIUserConfig() (*CLIUserConfig, error) {
-
-	configPath, err := findCLIUserConfigPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get config path: %v", err)
-	}
-
-	return readCLIUserConfig(configPath)
-}
-
 func readCLIUserConfig(configPath string) (*CLIUserConfig, error) {
 	if configPath == "" {
 		return nil, fmt.Errorf("no configPath specified")
