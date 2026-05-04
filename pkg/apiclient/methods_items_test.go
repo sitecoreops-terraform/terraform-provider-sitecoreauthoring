@@ -495,6 +495,82 @@ func TestConvertFromGraphQLItemWithFields(t *testing.T) {
 }
 
 // TestRenameItem tests the RenameItem method
+func TestMapMutationResponseFieldsMap(t *testing.T) {
+	t.Run("Should only include fields that were in the original request", func(t *testing.T) {
+		responseFields := []struct {
+			Name  string      `json:"name"`
+			Value interface{} `json:"value"`
+		}{
+			{"title", "Test Title"},
+			{"text", "Test Text"},
+			{"description", "Test Description"},
+		}
+
+		requestedFields := map[string]interface{}{
+			"title": "Test Title",
+			"text":  "Test Text",
+			// description was not requested
+		}
+
+		result := mapMutationResponseFieldsMap(responseFields, requestedFields)
+
+		// Should only include title and text, not description
+		if len(result) != 2 {
+			t.Errorf("Expected 2 fields, got %d", len(result))
+		}
+
+		if result["title"] != "Test Title" {
+			t.Errorf("Expected title='Test Title', got %v", result["title"])
+		}
+
+		if result["text"] != "Test Text" {
+			t.Errorf("Expected text='Test Text', got %v", result["text"])
+		}
+
+		// description should not be in the result
+		if _, exists := result["description"]; exists {
+			t.Error("Description should not be included in result")
+		}
+	})
+
+	t.Run("Should handle empty requested fields", func(t *testing.T) {
+		responseFields := []struct {
+			Name  string      `json:"name"`
+			Value interface{} `json:"value"`
+		}{
+			{"title", "Test Title"},
+			{"text", "Test Text"},
+		}
+
+		requestedFields := map[string]interface{}{}
+
+		result := mapMutationResponseFieldsMap(responseFields, requestedFields)
+
+		// Should be empty since no fields were requested
+		if len(result) != 0 {
+			t.Errorf("Expected 0 fields, got %d", len(result))
+		}
+	})
+
+	t.Run("Should handle empty response fields", func(t *testing.T) {
+		responseFields := []struct {
+			Name  string      `json:"name"`
+			Value interface{} `json:"value"`
+		}{}
+
+		requestedFields := map[string]interface{}{
+			"title": "Test Title",
+		}
+
+		result := mapMutationResponseFieldsMap(responseFields, requestedFields)
+
+		// Should be empty since no fields were returned
+		if len(result) != 0 {
+			t.Errorf("Expected 0 fields, got %d", len(result))
+		}
+	})
+}
+
 func TestRenameItem(t *testing.T) {
 	t.Run("Rename item with mocked response", func(t *testing.T) {
 		// Mock response for renameItem mutation

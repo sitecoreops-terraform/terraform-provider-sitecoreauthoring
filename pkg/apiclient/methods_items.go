@@ -46,6 +46,7 @@ func (c *Client) GetItemByPath(path string, fieldNames []string, existingVersion
 func (c *Client) GetItemByID(itemID string, fieldNames []string, existingVersionOnly *bool) (*Item, error) {
 	// Build query using the new builder
 	builder := NewGetItemQueryBuilder()
+	// Format the item ID to the standard GUID format
 	builder.SetItemID(itemID)
 	if existingVersionOnly != nil {
 		builder.SetExistingVersionOnly(*existingVersionOnly)
@@ -122,7 +123,7 @@ func convertFromGraphQLItem(graphQLItem *graphQLItemResponse, fieldNames []strin
 	}
 
 	return &Item{
-		ItemID:       graphQLItem.ItemID,
+		ItemID:       FormatItemID(graphQLItem.ItemID),
 		Path:         graphQLItem.Path,
 		Name:         graphQLItem.Name,
 		DisplayName:  graphQLItem.DisplayName,
@@ -137,7 +138,9 @@ func convertFromGraphQLItem(graphQLItem *graphQLItemResponse, fieldNames []strin
 func (c *Client) GetItemByIDWithFields(itemID string, existingVersionOnly *bool) (*Item, error) {
 	// Build query using the new builder - this uses fields.nodes format
 	builder := NewGetItemQueryBuilder()
-	builder.SetItemID(itemID)
+	// Format the item ID to the standard GUID format
+	formattedItemID := FormatItemID(itemID)
+	builder.SetItemID(formattedItemID)
 	if existingVersionOnly != nil {
 		builder.SetExistingVersionOnly(*existingVersionOnly)
 	}
@@ -208,6 +211,7 @@ func (c *Client) GetItemByPathWithFields(path string, existingVersionOnly *bool)
 // CreateItem creates a new item
 func (c *Client) CreateItem(name string, templateID string, parentID string, language string, fields map[string]interface{}) (*Item, error) {
 	// Build mutation using the new builder
+	fieldsList := []string{}
 	builder := NewCreateItemQueryBuilder()
 	builder.SetName(name)
 	builder.SetTemplateID(templateID)
@@ -215,6 +219,7 @@ func (c *Client) CreateItem(name string, templateID string, parentID string, lan
 	builder.SetLanguage(language)
 	for fieldName, fieldValue := range fields {
 		builder.AddField(fieldName, fieldValue)
+		fieldsList = append(fieldsList, fieldName)
 	}
 	query := builder.Build()
 
@@ -246,20 +251,31 @@ func (c *Client) CreateItem(name string, templateID string, parentID string, lan
 		return nil, fmt.Errorf("failed to parse create item response: %v", err)
 	}
 
-	// Now fetch the full item details using the new path
-	createdItem, err := c.GetItemByPathWithFields(createResponse.CreateItem.Item.Path, nil)
+	createdItem, err := c.GetItemByID(createResponse.CreateItem.Item.ItemID, fieldsList, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch created item details: %v", err)
 	}
 
-	return createdItem, nil
+	// Convert fields from nodes format, only including requested fields
+	// fieldsMap := mapMutationResponseFieldsMap(createdItem.Fields, fields)
+
+	item := &Item{
+		ItemID: FormatItemID(createResponse.CreateItem.Item.ItemID),
+		Name:   createResponse.CreateItem.Item.Name,
+		Path:   createResponse.CreateItem.Item.Path,
+		Fields: createdItem.Fields,
+	}
+
+	return item, nil
 }
 
 // UpdateItem updates an existing item
 func (c *Client) UpdateItem(itemID string, language string, fields map[string]interface{}, database string, path string) (*Item, error) {
 	// Build mutation using the new builder
 	builder := NewUpdateItemQueryBuilder()
-	builder.SetItemID(itemID)
+	// Format the item ID to the standard GUID format
+	formattedItemID := FormatItemID(itemID)
+	builder.SetItemID(formattedItemID)
 	builder.SetLanguage(language)
 	for fieldName, fieldValue := range fields {
 		builder.AddField(fieldName, fieldValue)
@@ -300,14 +316,11 @@ func (c *Client) UpdateItem(itemID string, language string, fields map[string]in
 		return nil, fmt.Errorf("failed to parse update item response: %v", err)
 	}
 
-	// Convert fields from nodes format
-	fieldsMap := make(map[string]interface{})
-	for _, field := range updateResponse.UpdateItem.Item.Fields.Nodes {
-		fieldsMap[field.Name] = field.Value
-	}
+	// Convert fields from nodes format, only including requested fields
+	fieldsMap := mapMutationResponseFieldsMap(updateResponse.UpdateItem.Item.Fields.Nodes, fields)
 
 	item := &Item{
-		ItemID: updateResponse.UpdateItem.Item.ItemID,
+		ItemID: FormatItemID(updateResponse.UpdateItem.Item.ItemID),
 		Name:   updateResponse.UpdateItem.Item.Name,
 		Path:   updateResponse.UpdateItem.Item.Path,
 		Fields: fieldsMap,
@@ -349,7 +362,9 @@ func (c *Client) DeleteItem(path string, permanently bool) (bool, error) {
 func (c *Client) RenameItem(itemID string, newName string, database string) (*Item, error) {
 	// Build mutation using the new builder
 	builder := NewRenameItemQueryBuilder()
-	builder.SetItemID(itemID)
+	// Format the item ID to the standard GUID format
+	formattedItemID := FormatItemID(itemID)
+	builder.SetItemID(formattedItemID)
 	builder.SetNewName(newName)
 	if database != "" {
 		builder.SetDatabase(database)
@@ -418,7 +433,7 @@ func convertFromGraphQLItemWithFields(graphQLItem *graphQLItemWithFieldsResponse
 	}
 
 	return &Item{
-		ItemID:       graphQLItem.ItemID,
+		ItemID:       FormatItemID(graphQLItem.ItemID),
 		Path:         graphQLItem.Path,
 		Name:         graphQLItem.Name,
 		DisplayName:  graphQLItem.DisplayName,
@@ -426,4 +441,20 @@ func convertFromGraphQLItemWithFields(graphQLItem *graphQLItemWithFieldsResponse
 		TemplateName: graphQLItem.Template.Name,
 		Fields:       fieldsMap,
 	}
+}
+
+// mapMutationResponseFieldsMap maps fields from mutation response nodes to a map,
+// but only includes fields that were in the original request
+func mapMutationResponseFieldsMap(fieldsNodes []struct {
+	Name  string      `json:"name"`
+	Value interface{} `json:"value"`
+}, requestedFields map[string]interface{}) map[string]interface{} {
+	fieldsMap := make(map[string]interface{})
+	for _, field := range fieldsNodes {
+		// Only include fields that were in the original request
+		if _, exists := requestedFields[field.Name]; exists {
+			fieldsMap[field.Name] = field.Value
+		}
+	}
+	return fieldsMap
 }

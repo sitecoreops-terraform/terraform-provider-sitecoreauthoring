@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -245,5 +246,39 @@ func TestConvertToResourceModel(t *testing.T) {
 		result := convertToResourceModel(testItem, plan)
 
 		assert.True(t, result.Fields.IsNull())
+	})
+}
+
+// Test the convertFieldsMap helper function
+func TestConvertFieldsMap(t *testing.T) {
+	t.Run("Test convertFieldsMap function", func(t *testing.T) {
+		// Test with valid string fields
+		fieldsMap := types.MapValueMust(types.StringType, map[string]attr.Value{
+			"Key":   types.StringValue("x-secret-header"),
+			"Value": types.StringValue("secret-value"),
+		})
+
+		result, err := convertFieldsMap(context.Background(), fieldsMap)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, "x-secret-header", result["Key"])
+		assert.Equal(t, "secret-value", result["Value"])
+	})
+
+	t.Run("Test convertFieldsMap with null map", func(t *testing.T) {
+		fieldsMap := types.MapNull(types.StringType)
+
+		result, err := convertFieldsMap(context.Background(), fieldsMap)
+		assert.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("Test convertFieldsMap with empty map", func(t *testing.T) {
+		fieldsMap := types.MapValueMust(types.StringType, map[string]attr.Value{})
+
+		result, err := convertFieldsMap(context.Background(), fieldsMap)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Len(t, result, 0)
 	})
 }

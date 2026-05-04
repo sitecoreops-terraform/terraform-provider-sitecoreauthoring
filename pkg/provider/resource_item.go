@@ -44,6 +44,34 @@ type itemResourceModel struct {
 	Database   types.String `tfsdk:"database"`
 }
 
+// convertFieldsMap converts a types.Map with string elements to map[string]interface{}
+func convertFieldsMap(ctx context.Context, fieldsMap types.Map) (map[string]interface{}, error) {
+	if fieldsMap.IsNull() || fieldsMap.IsUnknown() {
+		return nil, nil
+	}
+
+	// Get the elements from the map
+	elements := fieldsMap.Elements()
+	if len(elements) == 0 {
+		return make(map[string]interface{}), nil
+	}
+
+	result := make(map[string]interface{})
+
+	// Iterate through each element in the map
+	for key, value := range elements {
+		// Convert the attr.Value to string
+		if !value.IsNull() && !value.IsUnknown() {
+			strValue := value.(types.String).ValueString()
+			result[key] = strValue
+		} else {
+			result[key] = nil
+		}
+	}
+
+	return result, nil
+}
+
 // Metadata returns the resource type name
 func (r *itemResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_item"
@@ -132,9 +160,13 @@ func (r *itemResource) Create(ctx context.Context, req resource.CreateRequest, r
 	// Convert fields from Terraform format to map[string]interface{}
 	fieldsMap := make(map[string]interface{})
 	if !plan.Fields.IsNull() && len(plan.Fields.Elements()) > 0 {
-		diags := plan.Fields.ElementsAs(ctx, &fieldsMap, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
+		var err error
+		fieldsMap, err = convertFieldsMap(ctx, plan.Fields)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Convert Fields",
+				"Unable to convert fields: "+err.Error(),
+			)
 			return
 		}
 	}
@@ -244,9 +276,13 @@ func (r *itemResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	// Convert fields from Terraform format to map[string]interface{}
 	fieldsMap := make(map[string]interface{})
 	if !plan.Fields.IsNull() && len(plan.Fields.Elements()) > 0 {
-		diags := plan.Fields.ElementsAs(ctx, &fieldsMap, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
+		var err error
+		fieldsMap, err = convertFieldsMap(ctx, plan.Fields)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Convert Fields",
+				"Unable to convert fields: "+err.Error(),
+			)
 			return
 		}
 	}

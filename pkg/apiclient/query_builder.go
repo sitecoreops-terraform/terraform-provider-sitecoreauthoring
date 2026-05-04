@@ -250,6 +250,12 @@ func (b *CreateItemQueryBuilder) Build() string {
 					itemId
 					name
 					path
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
 				}
 			}
 		}
@@ -270,6 +276,12 @@ func (b *CreateItemQueryBuilder) Build() string {
 					itemId
 					name
 					path
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
 				}
 			}
 		}

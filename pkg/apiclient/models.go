@@ -3,6 +3,7 @@ package apiclient
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // Site represents a Sitecore site
@@ -148,6 +149,55 @@ func TransformGraphQLFields(rawFields map[string]interface{}) map[string]interfa
 	}
 
 	return result
+}
+
+// FormatItemID converts a Sitecore item ID from the API format (lowercase without braces)
+// to the standard GUID format with braces and uppercase letters.
+// Example: "87f82eeb362b4923900176b29b448600" -> "{87F82EEB-362B-4923-9001-76B29B448600}"
+func FormatItemID(itemID string) string {
+	if itemID == "" {
+		return itemID
+	}
+
+	// Check if the ID is already in the correct format (has braces and is uppercase)
+	if strings.HasPrefix(itemID, "{") && strings.HasSuffix(itemID, "}") {
+		// Check if it's already properly formatted by checking for dashes
+		innerID := strings.Trim(itemID, "{}")
+		if strings.Contains(innerID, "-") {
+			return itemID // Already in correct format
+		}
+	}
+
+	// Remove any existing braces
+	itemID = strings.Trim(itemID, "{}")
+
+	// Only format if it's exactly 32 characters and contains only hexadecimal characters
+	if len(itemID) == 32 {
+		// Check if all characters are hexadecimal (0-9, a-f, A-F)
+		isHex := true
+		for _, c := range itemID {
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+				isHex = false
+				break
+			}
+		}
+
+		if isHex {
+			// Convert to uppercase
+			itemID = strings.ToUpper(itemID)
+
+			// Format as GUID: 8-4-4-4-12
+			return fmt.Sprintf("{%s-%s-%s-%s-%s}",
+				itemID[0:8],
+				itemID[8:12],
+				itemID[12:16],
+				itemID[16:20],
+				itemID[20:32])
+		}
+	}
+
+	// If it doesn't match the expected format, return as-is
+	return itemID
 }
 
 // ItemResponse represents the response from item queries
