@@ -1,7 +1,6 @@
 # Example: Get item by path with specific fields
 data "sitecoreauthoring_item" "by_path" {
   path        = "/sitecore/content/"
-  required    = false
 }
 
 # Output item information

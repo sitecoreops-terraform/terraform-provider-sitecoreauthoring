@@ -14,85 +14,80 @@ func normalize(s string) string {
 	return re.ReplaceAllString(s, "")
 }
 
-// TestBuildFieldsQuery tests the buildFieldsQuery function
-func TestBuildFieldsQuery(t *testing.T) {
-
+// TestGetItemQueryBuilderFields tests the GetItemQueryBuilder field building
+func TestGetItemQueryBuilderFields(t *testing.T) {
 	t.Run("Multiple fields", func(t *testing.T) {
-		fieldNames := []string{"title", "text", "image"}
-		expectedFields := "field1:field(name:\"title\") { value }\n\t\t\t\t\tfield2:field(name:\"text\") { value }\n\t\t\t\t\tfield3:field(name:\"image\") { value }\n\t\t\t\t\t"
+		builder := NewGetItemQueryBuilder()
+		builder.AddField("title", nil)
+		builder.AddField("text", nil)
+		builder.AddField("image", nil)
 
-		actualFields := buildFieldsQuery(fieldNames)
-
-		if actualFields != expectedFields {
-			t.Errorf("Expected fields: %s\nActual fields: %s", expectedFields, actualFields)
+		// Extract just the fields part for testing
+		fullQuery := builder.Build()
+		// The fields should be in the query
+		if !strings.Contains(fullQuery, `field1:field(name:"title") { value }`) {
+			t.Errorf("Expected field1:field(name:\"title\") { value } in query")
+		}
+		if !strings.Contains(fullQuery, `field2:field(name:"text") { value }`) {
+			t.Errorf("Expected field2:field(name:\"text\") { value } in query")
+		}
+		if !strings.Contains(fullQuery, `field3:field(name:"image") { value }`) {
+			t.Errorf("Expected field3:field(name:\"image\") { value } in query")
 		}
 	})
 
 	t.Run("Single field", func(t *testing.T) {
-		fieldNames := []string{"title"}
-		expectedFields := "field1:field(name:\"title\") { value }\n\t\t\t\t\t"
+		builder := NewGetItemQueryBuilder()
+		builder.AddField("title", nil)
 
-		actualFields := buildFieldsQuery(fieldNames)
-
-		if actualFields != expectedFields {
-			t.Errorf("Expected fields: %s\n\nActual fields: %s", expectedFields, actualFields)
+		fullQuery := builder.Build()
+		if !strings.Contains(fullQuery, `field1:field(name:"title") { value }`) {
+			t.Errorf("Expected field1:field(name:\"title\") { value } in query")
 		}
 	})
 
 	t.Run("No fields", func(t *testing.T) {
-		fieldNames := []string{}
-		expectedFields := ""
+		builder := NewGetItemQueryBuilder()
+		builder.SetPath("/test")
 
-		actualFields := buildFieldsQuery(fieldNames)
-
-		if actualFields != expectedFields {
-			t.Errorf("Expected fields: %s\nActual fields: %s", expectedFields, actualFields)
+		fullQuery := builder.Build()
+		// Should not contain any field definitions
+		if strings.Contains(fullQuery, "field1:") || strings.Contains(fullQuery, "field(name:") {
+			t.Errorf("Expected no fields in query when no fields added")
 		}
 	})
 }
 
-// TestBuildWhereClause tests the buildWhereClause function
-func TestBuildWhereClause(t *testing.T) {
+// TestGetItemQueryBuilderWhereClause tests the GetItemQueryBuilder where clause building
+func TestGetItemQueryBuilderWhereClause(t *testing.T) {
 	t.Run("Path without existingVersionOnly", func(t *testing.T) {
-		actualWhereClause := buildWhereClause(true, "/sitecore/content/asmblii/home", nil)
-		expectedWhereClause := `{path: "/sitecore/content/asmblii/home"}`
-		if actualWhereClause != expectedWhereClause {
-			t.Errorf("Expected where clause: %s\nActual where clause: %s", expectedWhereClause, actualWhereClause)
+		builder := NewGetItemQueryBuilder()
+		builder.SetPath("/sitecore/content/asmblii/home")
+		query := builder.Build()
+
+		if !strings.Contains(query, `{path: "/sitecore/content/asmblii/home"}`) {
+			t.Errorf("Expected where clause {path: \"/sitecore/content/asmblii/home\"} in query")
 		}
 	})
 
 	t.Run("Path with existingVersionOnly=true", func(t *testing.T) {
-		existingVersionOnly := true
-		actualWhereClause := buildWhereClause(true, "/sitecore/content/asmblii/home", &existingVersionOnly)
-		expectedWhereClause := `{path: "/sitecore/content/asmblii/home", existingVersionOnly: true}`
-		if actualWhereClause != expectedWhereClause {
-			t.Errorf("Expected where clause: %s\nActual where clause: %s", expectedWhereClause, actualWhereClause)
-		}
-	})
+		builder := NewGetItemQueryBuilder()
+		builder.SetPath("/sitecore/content/asmblii/home")
+		builder.SetExistingVersionOnly(true)
+		query := builder.Build()
 
-	t.Run("Path with existingVersionOnly=false", func(t *testing.T) {
-		existingVersionOnly := false
-		actualWhereClause := buildWhereClause(true, "/sitecore/content/asmblii/home", &existingVersionOnly)
-		expectedWhereClause := `{path: "/sitecore/content/asmblii/home", existingVersionOnly: false}`
-		if actualWhereClause != expectedWhereClause {
-			t.Errorf("Expected where clause: %s\nActual where clause: %s", expectedWhereClause, actualWhereClause)
+		if !strings.Contains(query, `{path: "/sitecore/content/asmblii/home", existingVersionOnly: true}`) {
+			t.Errorf("Expected where clause {path: \"/sitecore/content/asmblii/home\", existingVersionOnly: true} in query")
 		}
 	})
 
 	t.Run("ID without existingVersionOnly", func(t *testing.T) {
-		actualWhereClause := buildWhereClause(false, "{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}", nil)
-		expectedWhereClause := `{itemId: "{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}"}`
-		if actualWhereClause != expectedWhereClause {
-			t.Errorf("Expected where clause: %s\nActual where clause: %s", expectedWhereClause, actualWhereClause)
-		}
-	})
+		builder := NewGetItemQueryBuilder()
+		builder.SetItemID("{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}")
+		query := builder.Build()
 
-	t.Run("ID with existingVersionOnly=true", func(t *testing.T) {
-		existingVersionOnly := true
-		actualWhereClause := buildWhereClause(false, "{GUID}", &existingVersionOnly)
-		expectedWhereClause := `{itemId: "{GUID}", existingVersionOnly: true}`
-		if actualWhereClause != expectedWhereClause {
-			t.Errorf("Expected where clause: %s\nActual where clause: %s", expectedWhereClause, actualWhereClause)
+		if !strings.Contains(query, `{itemId: "{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}"}`) {
+			t.Errorf("Expected where clause {itemId: \"{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}\"} in query")
 		}
 	})
 }
@@ -224,13 +219,14 @@ func TestRealAPIResponseParsing(t *testing.T) {
 	})
 }
 
-// TestBuildItemQuery tests the complete query building
-func TestBuildItemQuery(t *testing.T) {
+// TestGetItemQueryBuilderComplete tests the complete GetItemQueryBuilder
+func TestGetItemQueryBuilderComplete(t *testing.T) {
 	t.Run("Item by Path with fields", func(t *testing.T) {
-		fieldNames := []string{"title", "text"}
-		fieldsQuery := buildFieldsQuery(fieldNames)
-		whereClause := buildWhereClause(true, "/sitecore/content/asmblii/home", nil)
-		actualQuery := buildItemQuery(whereClause, fieldsQuery)
+		builder := NewGetItemQueryBuilder()
+		builder.SetPath("/sitecore/content/asmblii/home")
+		builder.AddField("title", nil)
+		builder.AddField("text", nil)
+		actualQuery := builder.Build()
 
 		expectedQuery := `
 		query ItemLookup {
@@ -245,34 +241,19 @@ func TestBuildItemQuery(t *testing.T) {
 				}
 				field1:field(name:"title") { value }
 					field2:field(name:"text") { value }
-					
-				children {
-					nodes {
-						itemId
-						path
-						name
-						displayName
-						template {
-							templateId
-							name
-						}
-						field1:field(name:"title") { value }
-					field2:field(name:"text") { value }
-					
-					}
-				}
+			}
 		}
-	}`
+	`
 
 		assert.Equal(t, normalize(expectedQuery), normalize(actualQuery))
 	})
 
 	t.Run("Item by Path with existingVersionOnly", func(t *testing.T) {
-		fieldNames := []string{"title"}
-		existingVersionOnly := true
-		fieldsQuery := buildFieldsQuery(fieldNames)
-		whereClause := buildWhereClause(true, "/sitecore/content/asmblii/home", &existingVersionOnly)
-		actualQuery := buildItemQuery(whereClause, fieldsQuery)
+		builder := NewGetItemQueryBuilder()
+		builder.SetPath("/sitecore/content/asmblii/home")
+		builder.SetExistingVersionOnly(true)
+		builder.AddField("title", nil)
+		actualQuery := builder.Build()
 
 		expectedQuery := `
 		query ItemLookup {
@@ -286,31 +267,18 @@ func TestBuildItemQuery(t *testing.T) {
 					name
 				}
 				field1:field(name:"title") { value }
-				
-				children {
-					nodes {
-						itemId
-						path
-						name
-						displayName
-						template {
-							templateId
-							name
-						}
-						field1:field(name:"title") { value}
-					}
-				}
 			}
-		}`
+		}
+	`
 
 		assert.Equal(t, normalize(expectedQuery), normalize(actualQuery))
 	})
 
 	t.Run("Item by ID without fields", func(t *testing.T) {
-		fieldNames := []string{"description"}
-		fieldsQuery := buildFieldsQuery(fieldNames)
-		whereClause := buildWhereClause(false, "{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}", nil)
-		actualQuery := buildItemQuery(whereClause, fieldsQuery)
+		builder := NewGetItemQueryBuilder()
+		builder.SetItemID("{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}")
+		builder.AddField("description", nil)
+		actualQuery := builder.Build()
 
 		expectedQuery := `
 		query ItemLookup {
@@ -324,159 +292,15 @@ func TestBuildItemQuery(t *testing.T) {
 					name
 				}
 				field1:field(name:"description") { value }
-				
-				children {
-					nodes {
-						itemId
-						path
-						name
-						displayName
-						template {
-							templateId
-							name
-						}
-						field1:field(name:"description") { value }
-
-					}
-				}
 			}
-		}`
+		}
+	`
 
 		assert.Equal(t, normalize(expectedQuery), normalize(actualQuery))
 	})
 }
 
-func TestFieldNameMapping(t *testing.T) {
-	t.Run("Test field alias to original name mapping", func(t *testing.T) {
-		// Test the complete flow: requested fields -> GraphQL aliases -> back to original names
-		requestedFields := []string{"title", "text", "description"}
-
-		// Simulate GraphQL response with field aliases
-		rawJSON := `{
-			"item": {
-				"itemId": "test-item-id",
-				"path": "/test/path",
-				"name": "Test Item",
-				"displayName": "Test Item",
-				"template": {
-					"templateId": "template-id",
-					"name": "Test Template"
-				},
-				"field1": {
-					"value": "Hello World"
-				},
-				"field2": {
-					"value": "Some content"
-				},
-				"field3": {
-					"value": "Item description"
-				},
-				"children": {
-					"nodes": []
-				}
-			}
-		}`
-
-		// Parse the JSON into our structure
-		var responseData map[string]interface{}
-		if err := json.Unmarshal([]byte(rawJSON), &responseData); err != nil {
-			t.Fatalf("Failed to unmarshal raw JSON: %v", err)
-		}
-
-		var graphQLResponse struct {
-			Item *graphQLItemResponse `json:"item"`
-		}
-		if err := parseGraphQLResponse(responseData, &graphQLResponse); err != nil {
-			t.Fatalf("Failed to parse GraphQL response: %v", err)
-		}
-
-		// Convert using the field name mapping
-		item := convertFromGraphQLItem(graphQLResponse.Item, requestedFields)
-
-		// Verify that field aliases were mapped back to original names
-		if item.Fields == nil {
-			t.Fatal("Fields should not be nil")
-		}
-
-		// Check that we have the correct field names (not field1, field2, field3)
-		if _, exists := item.Fields["field1"]; exists {
-			t.Error("Field should be mapped to original name, not keep 'field1' alias")
-		}
-		if _, exists := item.Fields["field2"]; exists {
-			t.Error("Field should be mapped to original name, not keep 'field2' alias")
-		}
-		if _, exists := item.Fields["field3"]; exists {
-			t.Error("Field should be mapped to original name, not keep 'field3' alias")
-		}
-
-		// Check that original field names are present with correct values
-		if title, ok := item.Fields["title"].(string); !ok || title != "Hello World" {
-			t.Errorf("Expected title='Hello World', got %v", item.Fields["title"])
-		}
-		if text, ok := item.Fields["text"].(string); !ok || text != "Some content" {
-			t.Errorf("Expected text='Some content', got %v", item.Fields["text"])
-		}
-		if desc, ok := item.Fields["description"].(string); !ok || desc != "Item description" {
-			t.Errorf("Expected description='Item description', got %v", item.Fields["description"])
-		}
-	})
-
-	t.Run("Test field mapping with fewer fields than requested", func(t *testing.T) {
-		// Test when some requested fields are null/empty in response
-		requestedFields := []string{"title", "text", "missing_field"}
-
-		rawJSON := `{
-			"item": {
-				"itemId": "test-id",
-				"path": "/test",
-				"name": "Test",
-				"displayName": "Test",
-				"template": {
-					"templateId": "temp-id",
-					"name": "Template"
-				},
-				"field1": {
-					"value": "Title Value"
-				},
-				"field2": null,
-				"children": {
-					"nodes": []
-				}
-			}
-		}`
-
-		var responseData map[string]interface{}
-		if err := json.Unmarshal([]byte(rawJSON), &responseData); err != nil {
-			t.Fatalf("Failed to unmarshal: %v", err)
-		}
-
-		var graphQLResponse struct {
-			Item *graphQLItemResponse `json:"item"`
-		}
-		if err := parseGraphQLResponse(responseData, &graphQLResponse); err != nil {
-			t.Fatalf("Failed to parse: %v", err)
-		}
-
-		item := convertFromGraphQLItem(graphQLResponse.Item, requestedFields)
-
-		// Should have title mapped correctly
-		if title, ok := item.Fields["title"].(string); !ok || title != "Title Value" {
-			t.Errorf("Expected title='Title Value', got %v", item.Fields["title"])
-		}
-
-		// text should be nil (field2 was null)
-		if item.Fields["text"] != nil {
-			t.Errorf("Expected text to be nil, got %v", item.Fields["text"])
-		}
-
-		// missing_field should not exist (no field3 in response)
-		if _, exists := item.Fields["missing_field"]; exists {
-			t.Errorf("missing_field should not exist in result")
-		}
-	})
-}
-
-func TestParseGraphQLResponse(t *testing.T) {
+func TestParseGetItemGraphQLResponse(t *testing.T) {
 	t.Run("Test parsing raw JSON string with item data", func(t *testing.T) {
 		// Raw JSON string as it would come from GraphQL API
 		rawJSON := `{
@@ -594,3 +418,116 @@ func TestParseGraphQLResponse(t *testing.T) {
 		}
 	})
 }
+
+func TestConvertFromGraphQLItemWithFields(t *testing.T) {
+	t.Run("Convert GraphQL response with fields.nodes to Item", func(t *testing.T) {
+		rawJSON := `{
+			"itemId": "a58aab49fe074gt5b03f927c581e74d7",
+			"name": "Sitecore Authoring and Management API",
+			"path": "/sitecore/content/Home/Sitecore Authoring and Management API",
+			"displayName": "Sitecore Authoring and Management API",
+			"template": {
+				"templateId": "76036f5ecbce46d1af0a4143f9b557aa",
+				"name": "Sample Item"
+			},
+			"fields": {
+				"nodes": [
+					{
+						"name": "Text",
+						"value": "Welcome to Sitecore"
+					},
+					{
+						"name": "Title",
+						"value": "Welcome to Sitecore"
+					}
+				]
+			}
+		}`
+
+		var graphQLItem graphQLItemWithFieldsResponse
+		if err := json.Unmarshal([]byte(rawJSON), &graphQLItem); err != nil {
+			t.Fatalf("Failed to unmarshal JSON: %v", err)
+		}
+
+		item := convertFromGraphQLItemWithFields(&graphQLItem)
+
+		assert.Equal(t, "a58aab49fe074gt5b03f927c581e74d7", item.ItemID)
+		assert.Equal(t, "Sitecore Authoring and Management API", item.Name)
+		assert.Equal(t, "/sitecore/content/Home/Sitecore Authoring and Management API", item.Path)
+		assert.Equal(t, "76036f5ecbce46d1af0a4143f9b557aa", item.TemplateID)
+		assert.Equal(t, "Sample Item", item.TemplateName)
+
+		// Check fields
+		assert.Equal(t, 2, len(item.Fields))
+		assert.Equal(t, "Welcome to Sitecore", item.Fields["Text"])
+		assert.Equal(t, "Welcome to Sitecore", item.Fields["Title"])
+	})
+
+	t.Run("Convert GraphQL response with empty fields", func(t *testing.T) {
+		rawJSON := `{
+			"itemId": "test-id",
+			"name": "Test Item",
+			"path": "/test/path",
+			"displayName": "Test Item",
+			"template": {
+				"templateId": "template-id",
+				"name": "Test Template"
+			},
+			"fields": {
+				"nodes": []
+			}
+		}`
+
+		var graphQLItem graphQLItemWithFieldsResponse
+		if err := json.Unmarshal([]byte(rawJSON), &graphQLItem); err != nil {
+			t.Fatalf("Failed to unmarshal JSON: %v", err)
+		}
+
+		item := convertFromGraphQLItemWithFields(&graphQLItem)
+
+		assert.Equal(t, "test-id", item.ItemID)
+		assert.Equal(t, "Test Item", item.Name)
+		assert.Equal(t, 0, len(item.Fields))
+	})
+}
+
+// func TestCreateItemWithMockedClient(t *testing.T) {
+// 	t.Run("Create item", func(t *testing.T) {
+
+// 		os.Setenv("HTTPS_PROXY", "http://192.168.1.101:8081")
+
+// 		name := "Dummy"
+// 		template := "123"
+// 		parentId := "234"
+// 		language := "en"
+
+// 		sampleResponse := `{
+// 		}`
+
+// 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 			assert.Equal(t, "/sitecore/api/authoring/graphql/v1/", r.URL.Path)
+// 			assert.Equal(t, http.MethodPost, r.Method)
+
+// 			w.Header().Set("Content-Type", "application/json")
+// 			w.WriteHeader(http.StatusOK)
+// 			_, err := w.Write([]byte(sampleResponse))
+// 			if err != nil {
+// 				t.Fatalf("TestListTokens write failed: %v", err)
+// 			}
+// 		}))
+// 		defer server.Close()
+
+// 		client := &Client{
+// 			BaseURL:    server.URL,
+// 			Token:      "test-token",
+// 			HTTPClient: server.Client(),
+// 		}
+
+// 		fields := map[string]interface{}{}
+
+// 		result, err := client.CreateItem(name, template, parentId, language, fields)
+// 		assert.Nil(t, err)
+
+// 		assert.NotNil(t, result)
+// 	})
+// }

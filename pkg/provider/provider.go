@@ -192,6 +192,6 @@ func (p *sitecoreProvider) DataSources(_ context.Context) []func() datasource.Da
 // Resources defines the resources implemented in the provider
 func (p *sitecoreProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		// Resources will be added here
+		NewItemResource,
 	}
 }

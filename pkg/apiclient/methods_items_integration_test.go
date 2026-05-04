@@ -33,9 +33,7 @@ func TestGetItemByPathIntegration(t *testing.T) {
 		assert.Len(t, fields, 2)
 		assert.Equal(t, "Sitecore Experience Platform", result.Fields["Title"])
 	})
-}
 
-func TestGetItemByIDIntegration(t *testing.T) {
 	t.Run("Integration tests - GetItemByID", func(t *testing.T) {
 
 		cliEndpointName := "dev"
