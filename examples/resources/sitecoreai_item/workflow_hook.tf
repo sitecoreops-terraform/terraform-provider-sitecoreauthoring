@@ -1,3 +1,7 @@
+#
+# This is an example of creating a Webhook Submit action in a workflow
+#
+
 data "sitecoreauthoring_item" "auth_template" {
   path = "/sitecore/templates/System/Webhooks/Authorization/ApiKey "
 }

@@ -26,10 +26,9 @@ Manages a Sitecore item using the Authoring API.
 
 - `database` (String) The database where the item is stored (default: master).
 - `fields` (Map of String) The fields of the item as key-value pairs.
-- `version` (Number) The version of the item.
 
 ### Read-Only
 
 - `id` (String) The unique identifier for the item resource.
 - `item_id` (String) The ID of the item.
-- `path` (String) The path of the item.
+- `path` (String) The path of the item. This is computed based on the item's location and name in Sitecore.
