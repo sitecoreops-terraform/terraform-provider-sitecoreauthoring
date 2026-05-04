@@ -2,6 +2,9 @@ package apiclient
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
@@ -491,43 +494,176 @@ func TestConvertFromGraphQLItemWithFields(t *testing.T) {
 	})
 }
 
-// func TestCreateItemWithMockedClient(t *testing.T) {
-// 	t.Run("Create item", func(t *testing.T) {
+// TestRenameItem tests the RenameItem method
+func TestRenameItem(t *testing.T) {
+	t.Run("Rename item with mocked response", func(t *testing.T) {
+		// Mock response for renameItem mutation
+		mockResponse := `{
+			"data": {
+				"renameItem": {
+					"item": {
+						"itemId": "{60FD672A-D787-4109-B823-3DB1A45DB4E4}",
+						"name": "sub2",
+						"path": "/sitecore/content/Home/sub2"
+					}
+				}
+			}
+		}`
 
-// 		os.Setenv("HTTPS_PROXY", "http://192.168.1.101:8081")
+		// Mock response for GetItemByPathWithFields
+		mockItemResponse := `{
+			"data": {
+				"item": {
+					"itemId": "{60FD672A-D787-4109-B823-3DB1A45DB4E4}",
+					"name": "sub2",
+					"path": "/sitecore/content/Home/sub2",
+					"displayName": "sub2",
+					"template": {
+						"templateId": "{76036F5E-CBCE-46D1-AF0A-4143F9B557AA}",
+						"name": "Sample Item"
+					},
+					"fields": {
+						"nodes": [
+							{
+								"name": "Title",
+								"value": "Renamed Item"
+							}
+						]
+					}
+				}
+			}
+		}`
 
-// 		name := "Dummy"
-// 		template := "123"
-// 		parentId := "234"
-// 		language := "en"
+		// Create a mock HTTP server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var response string
 
-// 		sampleResponse := `{
-// 		}`
+			// Check if this is the renameItem request or GetItemByPathWithFields request
+			bodyBytes, _ := io.ReadAll(r.Body)
+			bodyString := string(bodyBytes)
 
-// 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 			assert.Equal(t, "/sitecore/api/authoring/graphql/v1/", r.URL.Path)
-// 			assert.Equal(t, http.MethodPost, r.Method)
+			if strings.Contains(bodyString, "renameItem") {
+				response = mockResponse
+			} else if strings.Contains(bodyString, "item(where:") {
+				response = mockItemResponse
+			} else {
+				t.Fatalf("Unexpected request: %s", bodyString)
+			}
 
-// 			w.Header().Set("Content-Type", "application/json")
-// 			w.WriteHeader(http.StatusOK)
-// 			_, err := w.Write([]byte(sampleResponse))
-// 			if err != nil {
-// 				t.Fatalf("TestListTokens write failed: %v", err)
-// 			}
-// 		}))
-// 		defer server.Close()
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(response))
+			if err != nil {
+				t.Fatalf("Failed to write response: %v", err)
+			}
+		}))
+		defer server.Close()
 
-// 		client := &Client{
-// 			BaseURL:    server.URL,
-// 			Token:      "test-token",
-// 			HTTPClient: server.Client(),
-// 		}
+		// Create client with mock server
+		client := &Client{
+			BaseURL:    server.URL,
+			Token:      "test-token",
+			HTTPClient: server.Client(),
+		}
 
-// 		fields := map[string]interface{}{}
+		// Test the RenameItem method
+		itemID := "{60FD672A-D787-4109-B823-3DB1A45DB4E4}"
+		newName := "sub2"
+		database := "master"
 
-// 		result, err := client.CreateItem(name, template, parentId, language, fields)
-// 		assert.Nil(t, err)
+		result, err := client.RenameItem(itemID, newName, database)
 
-// 		assert.NotNil(t, result)
-// 	})
-// }
+		// Verify no error occurred
+		assert.Nil(t, err)
+
+		// Verify the result
+		assert.NotNil(t, result)
+		assert.Equal(t, itemID, result.ItemID)
+		assert.Equal(t, newName, result.Name)
+		assert.Equal(t, "/sitecore/content/Home/sub2", result.Path)
+		assert.Equal(t, 1, len(result.Fields))
+		assert.Equal(t, "Renamed Item", result.Fields["Title"])
+	})
+
+	t.Run("Rename item without database", func(t *testing.T) {
+		// Mock response for renameItem mutation without database
+		mockResponse := `{
+			"data": {
+				"renameItem": {
+					"item": {
+						"itemId": "{60FD672A-D787-4109-B823-3DB1A45DB4E4}",
+						"name": "sub2",
+						"path": "/sitecore/content/Home/sub2"
+					}
+				}
+			}
+		}`
+
+		// Mock response for GetItemByPathWithFields
+		mockItemResponse := `{
+			"data": {
+				"item": {
+					"itemId": "{60FD672A-D787-4109-B823-3DB1A45DB4E4}",
+					"name": "sub2",
+					"path": "/sitecore/content/Home/sub2",
+					"displayName": "sub2",
+					"template": {
+						"templateId": "{76036F5E-CBCE-46D1-AF0A-4143F9B557AA}",
+						"name": "Sample Item"
+					},
+					"fields": {
+						"nodes": []
+					}
+				}
+			}
+		}`
+
+		// Create a mock HTTP server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var response string
+
+			// Check if this is the renameItem request or GetItemByPathWithFields request
+			bodyBytes, _ := io.ReadAll(r.Body)
+			bodyString := string(bodyBytes)
+
+			if strings.Contains(bodyString, "renameItem") {
+				response = mockResponse
+			} else if strings.Contains(bodyString, "item(where:") {
+				response = mockItemResponse
+			} else {
+				t.Fatalf("Unexpected request: %s", bodyString)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(response))
+			if err != nil {
+				t.Fatalf("Failed to write response: %v", err)
+			}
+		}))
+		defer server.Close()
+
+		// Create client with mock server
+		client := &Client{
+			BaseURL:    server.URL,
+			Token:      "test-token",
+			HTTPClient: server.Client(),
+		}
+
+		// Test the RenameItem method without database
+		itemID := "{60FD672A-D787-4109-B823-3DB1A45DB4E4}"
+		newName := "sub2"
+
+		result, err := client.RenameItem(itemID, newName, "")
+
+		// Verify no error occurred
+		assert.Nil(t, err)
+
+		// Verify the result
+		assert.NotNil(t, result)
+		assert.Equal(t, itemID, result.ItemID)
+		assert.Equal(t, newName, result.Name)
+		assert.Equal(t, "/sitecore/content/Home/sub2", result.Path)
+		assert.Equal(t, 0, len(result.Fields))
+	})
+}

@@ -428,6 +428,70 @@ func (b *DeleteItemQueryBuilder) Build() string {
 	`, b.path, b.permanently)
 }
 
+// RenameItemQueryBuilder builds mutations for renaming items
+type RenameItemQueryBuilder struct {
+	itemID   string
+	newName  string
+	database string
+}
+
+// NewRenameItemQueryBuilder creates a new RenameItemQueryBuilder
+func NewRenameItemQueryBuilder() *RenameItemQueryBuilder {
+	return &RenameItemQueryBuilder{}
+}
+
+// SetItemID sets the item ID
+func (b *RenameItemQueryBuilder) SetItemID(itemID string) *RenameItemQueryBuilder {
+	b.itemID = itemID
+	return b
+}
+
+// SetNewName sets the new name
+func (b *RenameItemQueryBuilder) SetNewName(newName string) *RenameItemQueryBuilder {
+	b.newName = newName
+	return b
+}
+
+// SetDatabase sets the database
+func (b *RenameItemQueryBuilder) SetDatabase(database string) *RenameItemQueryBuilder {
+	b.database = database
+	return b
+}
+
+// Build builds the complete GraphQL mutation
+func (b *RenameItemQueryBuilder) Build() string {
+	mutation := fmt.Sprintf(`
+		mutation {
+			renameItem(
+				input: {
+					itemId: "%s"
+					newName: "%s"`, b.itemID, b.newName)
+
+	if b.database != "" {
+		mutation += fmt.Sprintf(`
+					database: "%s"`, b.database)
+	}
+
+	mutation += `
+				}
+			) {
+				item {
+					itemId
+					path
+					name
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
+				}
+			}
+		}`
+
+	return mutation
+}
+
 // GetChildItemsQueryBuilder builds queries for getting child items
 type GetChildItemsQueryBuilder struct {
 	*GetItemQueryBuilder

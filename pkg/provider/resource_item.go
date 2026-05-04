@@ -69,10 +69,11 @@ func (r *itemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				},
 			},
 			"path": schema.StringAttribute{
-				Description: "The path of the item.",
+				Description: "The path of the item. This is computed based on the item's location and name in Sitecore.",
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+					pathComputedOnNameChangeModifier{},
 				},
 			},
 			"name": schema.StringAttribute{
@@ -229,6 +230,17 @@ func (r *itemResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
+	// Check if the name is being changed
+	nameChanged := !state.Name.Equal(plan.Name)
+
+	database := "master"
+	if !plan.Database.IsNull() && len(plan.Database.ValueString()) > 0 {
+		database = plan.Database.ValueString()
+	}
+
+	var item *apiclient.Item
+	var err error
+
 	// Convert fields from Terraform format to map[string]interface{}
 	fieldsMap := make(map[string]interface{})
 	if !plan.Fields.IsNull() && len(plan.Fields.Elements()) > 0 {
@@ -239,25 +251,54 @@ func (r *itemResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		}
 	}
 
-	database := "master"
-	if !plan.Database.IsNull() && len(plan.Database.ValueString()) > 0 {
-		database = plan.Database.ValueString()
-	}
-
-	// Update the item using the API client
-	item, err := r.client.UpdateItem(
-		state.ItemID.ValueString(),
-		plan.Language.ValueString(),
-		fieldsMap,
-		database,
-		state.Path.ValueString(),
-	)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to Update Sitecore Item",
-			"Unable to update item: "+err.Error(),
+	if nameChanged {
+		// If name is being changed, use RenameItem method first
+		item, err = r.client.RenameItem(
+			state.ItemID.ValueString(),
+			plan.Name.ValueString(),
+			database,
 		)
-		return
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Rename Sitecore Item",
+				"Unable to rename item: "+err.Error(),
+			)
+			return
+		}
+
+		// If fields are also being changed, update them on the renamed item
+		if len(fieldsMap) > 0 {
+			item, err = r.client.UpdateItem(
+				state.ItemID.ValueString(),
+				plan.Language.ValueString(),
+				fieldsMap,
+				database,
+				item.Path, // Use the new path from the renamed item
+			)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Unable to Update Sitecore Item After Rename",
+					"Unable to update item fields after rename: "+err.Error(),
+				)
+				return
+			}
+		}
+	} else {
+		// If name is not being changed, use UpdateItem method for field updates
+		item, err = r.client.UpdateItem(
+			state.ItemID.ValueString(),
+			plan.Language.ValueString(),
+			fieldsMap,
+			database,
+			state.Path.ValueString(),
+		)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Update Sitecore Item",
+				"Unable to update item: "+err.Error(),
+			)
+			return
+		}
 	}
 
 	// Map the response to the resource model

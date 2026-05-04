@@ -338,7 +338,7 @@ func TestGetChildItemsQueryBuilder(t *testing.T) {
 				itemId
 				path
 				name
-					
+				
 				children {
 					nodes {
 						itemId
@@ -358,5 +358,74 @@ func TestGetChildItemsQueryBuilder(t *testing.T) {
 	`
 
 		assert.Equal(t, normalize(expectedQuery), normalize(query))
+	})
+}
+
+// TestRenameItemQueryBuilder tests the RenameItemQueryBuilder
+func TestRenameItemQueryBuilder(t *testing.T) {
+	t.Run("Build rename mutation with item ID and new name", func(t *testing.T) {
+		builder := NewRenameItemQueryBuilder()
+		builder.SetItemID("{60FD672A-D787-4109-B823-3DB1A45DB4E4}")
+		builder.SetNewName("sub2")
+
+		mutation := builder.Build()
+
+		expectedMutation := `
+		mutation {
+			renameItem(
+				input: {
+					itemId: "{60FD672A-D787-4109-B823-3DB1A45DB4E4}"
+					newName: "sub2"
+				}
+			) {
+				item {
+					itemId
+					path
+					name
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
+				}
+			}
+		}`
+
+		assert.Equal(t, expectedMutation, mutation)
+	})
+
+	t.Run("Build rename mutation with database", func(t *testing.T) {
+		builder := NewRenameItemQueryBuilder()
+		builder.SetItemID("{60FD672A-D787-4109-B823-3DB1A45DB4E4}")
+		builder.SetNewName("sub2")
+		builder.SetDatabase("master")
+
+		mutation := builder.Build()
+
+		expectedMutation := `
+		mutation {
+			renameItem(
+				input: {
+					itemId: "{60FD672A-D787-4109-B823-3DB1A45DB4E4}"
+					newName: "sub2"
+					database: "master"
+				}
+			) {
+				item {
+					itemId
+					path
+					name
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
+				}
+			}
+		}`
+
+		assert.Equal(t, expectedMutation, mutation)
 	})
 }

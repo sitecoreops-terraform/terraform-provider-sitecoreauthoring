@@ -345,6 +345,48 @@ func (c *Client) DeleteItem(path string, permanently bool) (bool, error) {
 	return deleteResponse.DeleteItem.Successful, nil
 }
 
+// RenameItem renames an item
+func (c *Client) RenameItem(itemID string, newName string, database string) (*Item, error) {
+	// Build mutation using the new builder
+	builder := NewRenameItemQueryBuilder()
+	builder.SetItemID(itemID)
+	builder.SetNewName(newName)
+	if database != "" {
+		builder.SetDatabase(database)
+	}
+	query := builder.Build()
+
+	response, err := c.doGraphQLRequest(GraphQLRequestOptions{
+		Query: query,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute rename item mutation: %v", err)
+	}
+
+	// Parse the response
+	var renameResponse struct {
+		RenameItem struct {
+			Item struct {
+				ItemID string `json:"itemId"`
+				Name   string `json:"name"`
+				Path   string `json:"path"`
+			} `json:"item"`
+		} `json:"renameItem"`
+	}
+
+	if err := parseGraphQLResponse(response.Data, &renameResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse rename item response: %v", err)
+	}
+
+	// Fetch the full item details using the new path
+	renamedItem, err := c.GetItemByPathWithFields(renameResponse.RenameItem.Item.Path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch renamed item details: %v", err)
+	}
+
+	return renamedItem, nil
+}
+
 // graphQLItemWithFieldsResponse represents the intermediate structure for GraphQL responses with fields.nodes format
 type graphQLItemWithFieldsResponse struct {
 	ItemID      string `json:"itemId"`
