@@ -228,9 +228,8 @@ func TestUpdateItemQueryBuilder(t *testing.T) {
 					itemId: "{59C9BA60-6483-451C-A435-B60BED2DBA75}"
 					language: "en"
 					fields: [
+					{name: "Content", value: "Lorem Ipsum", reset: false},
 					{name: "Title", value: "My new page", reset: false}
-					,
-					{name: "Content", value: "Lorem Ipsum", reset: false}
 					]
 				}
 			) {
