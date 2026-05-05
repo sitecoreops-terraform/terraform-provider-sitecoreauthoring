@@ -244,12 +244,6 @@ func TestUpdateItemQueryBuilder(t *testing.T) {
 							value
 						}
 					}
-					fields(ownFields: true) {
-						nodes {
-							name
-							value
-						}
-					}
 				}
 			}
 		}
