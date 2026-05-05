@@ -340,8 +340,16 @@ func (b *UpdateItemQueryBuilder) Build() string {
 	fieldsQuery := ""
 	if len(b.fields) > 0 {
 		fieldsQuery = "fields: ["
-		i := 0
-		for fieldName, fieldValue := range b.fields {
+
+		// Sort field names alphabetically for consistent output
+		fieldNames := make([]string, 0, len(b.fields))
+		for fieldName := range b.fields {
+			fieldNames = append(fieldNames, fieldName)
+		}
+		sort.Strings(fieldNames)
+
+		for i, fieldName := range fieldNames {
+			fieldValue := b.fields[fieldName]
 			if i > 0 {
 				fieldsQuery += ", "
 			}
@@ -352,12 +360,11 @@ func (b *UpdateItemQueryBuilder) Build() string {
 			} else {
 				// Escape quotes and handle special characters
 				escapedValue := fmt.Sprintf("%v", fieldValue)
-				// Simple JSON escaping - replace " with \"
+				// Simple JSON escaping - replace " with \
 				escapedValue = strings.ReplaceAll(escapedValue, `"`, `\"`)
 				valueStr = `"` + escapedValue + `"`
 			}
 			fieldsQuery += fmt.Sprintf(`{name: "%s", value: %s, reset: false}`, fieldName, valueStr)
-			i++
 		}
 		fieldsQuery += "]"
 	}
