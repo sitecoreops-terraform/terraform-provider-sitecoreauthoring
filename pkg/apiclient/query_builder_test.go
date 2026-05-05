@@ -118,6 +118,12 @@ func TestCreateItemQueryBuilder(t *testing.T) {
 					itemId
 					name
 					path
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
 				}
 			}
 		}
@@ -149,6 +155,12 @@ func TestCreateItemQueryBuilder(t *testing.T) {
 					itemId
 					name
 					path
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
 				}
 			}
 		}
@@ -183,6 +195,12 @@ func TestCreateItemQueryBuilder(t *testing.T) {
 					itemId
 					name
 					path
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
 				}
 			}
 		}
@@ -220,6 +238,12 @@ func TestUpdateItemQueryBuilder(t *testing.T) {
 					itemId
 					name
 					path
+					fields(ownFields: true) {
+						nodes {
+							name
+							value
+						}
+					}
 					fields(ownFields: true) {
 						nodes {
 							name
