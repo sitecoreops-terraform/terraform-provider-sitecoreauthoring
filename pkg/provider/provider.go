@@ -193,5 +193,6 @@ func (p *sitecoreProvider) DataSources(_ context.Context) []func() datasource.Da
 func (p *sitecoreProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewItemResource,
+		NewItemFieldResource,
 	}
 }
